@@ -136,6 +136,10 @@ async def get_stats():
     finally:
         app.state.pool.putconn(conn)
 
+@app.get("/collect-now")
+async def collect_now():
+    await collect_trends(app.state.pool)
+    return {"status": "started"}
 
 @app.get("/health")
 async def health():
