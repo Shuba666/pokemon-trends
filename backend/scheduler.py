@@ -1,10 +1,5 @@
-"""
-scheduler.py — сбор данных из Google Trends каждые 24 часа.
-Без зависимости от pandas — только чистый Python.
-"""
-
 import asyncio
-import asyncpg
+import psycopg2.pool
 import logging
 from datetime import date
 from pytrends.request import TrendReq
@@ -12,7 +7,7 @@ from pytrends.request import TrendReq
 logger = logging.getLogger(__name__)
 
 TOP_POKEMON = [
-    "Pikachu",    # anchor — всегда первый для нормализации
+    "Pikachu",
     "Charizard", "Mewtwo", "Eevee", "Gengar",
     "Snorlax", "Lucario", "Gardevoir", "Rayquaza", "Umbreon",
     "Bulbasaur", "Squirtle", "Charmander", "Jigglypuff", "Mew",
@@ -45,8 +40,8 @@ def make_batches(pokemon_list: list, anchor: str = "Pikachu") -> list:
     return [[anchor] + others[i:i+4] for i in range(0, len(others), 4)]
 
 
-async def collect_trends(pool: asyncpg.Pool):
-    logger.info(f"🔄 Начинаем сбор трендов за {date.today()}")
+async def collect_trends(pool: psycopg2.pool.ThreadedConnectionPool):
+    logger.info(f"🔄 Сбор трендов за {date.today()}")
     today = date.today()
 
     try:
@@ -62,25 +57,20 @@ async def collect_trends(pool: asyncpg.Pool):
                 df = pytrends.interest_by_region(
                     resolution='COUNTRY', inc_low_vol=True, inc_geo_code=False
                 )
-
-                # Убираем строки где все значения 0
                 df = df[df.sum(axis=1) > 0]
 
                 if df.empty:
                     logger.warning(f"  ⚠️  Батч {batch_idx+1} пустой")
                     continue
 
-                # Конвертируем DataFrame в обычный dict без pandas зависимости
-                data = df.to_dict(orient='index')  # {country: {pokemon: score}}
+                data = df.to_dict(orient='index')
 
                 if batch_idx == 0:
-                    # Запоминаем Pikachu как anchor для нормализации
                     anchor_scores = {
                         country: float(scores.get('Pikachu', 0))
                         for country, scores in data.items()
                     }
                 else:
-                    # Масштабируем относительно Pikachu
                     for country, scores in data.items():
                         pikachu_now = float(scores.get('Pikachu', 0))
                         pikachu_anchor = anchor_scores.get(country, 0)
@@ -90,20 +80,13 @@ async def collect_trends(pool: asyncpg.Pool):
                                 if pokemon != 'Pikachu':
                                     data[country][pokemon] = float(scores[pokemon]) * scale
 
-                # Собираем записи
                 for country, scores in data.items():
                     for pokemon in batch:
                         if pokemon == 'Pikachu' and batch_idx > 0:
                             continue
                         score = float(scores.get(pokemon, 0))
                         if score > 0:
-                            all_records.append({
-                                "date":    today,
-                                "country": country,
-                                "pokemon": pokemon,
-                                "region":  get_region(country),
-                                "score":   score,
-                            })
+                            all_records.append((today, country, pokemon, get_region(country), score))
 
             except Exception as e:
                 logger.error(f"  ❌ Ошибка в батче {batch_idx+1}: {e}")
@@ -112,26 +95,24 @@ async def collect_trends(pool: asyncpg.Pool):
                 await asyncio.sleep(8)
 
         if not all_records:
-            logger.error("❌ Нет данных для сохранения")
+            logger.error("❌ Нет данных")
             return
 
-        await _save_to_db(pool, all_records, today)
-        logger.info(f"✅ Сохранено {len(all_records)} записей за {today}")
+        # Сохраняем в PostgreSQL через psycopg2
+        conn = pool.getconn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM trends WHERE date = %s", (today,))
+                cur.executemany("""
+                    INSERT INTO trends (date, country, pokemon, region, score)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (date, country, pokemon) DO UPDATE
+                        SET score = EXCLUDED.score
+                """, all_records)
+            conn.commit()
+            logger.info(f"✅ Сохранено {len(all_records)} записей за {today}")
+        finally:
+            pool.putconn(conn)
 
     except Exception as e:
         logger.error(f"❌ Критическая ошибка: {e}")
-
-
-async def _save_to_db(pool: asyncpg.Pool, records: list, today: date):
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute("DELETE FROM trends WHERE date = $1", today)
-            await conn.executemany("""
-                INSERT INTO trends (date, country, pokemon, region, score)
-                VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (date, country, pokemon) DO UPDATE
-                    SET score = EXCLUDED.score
-            """, [
-                (r["date"], r["country"], r["pokemon"], r["region"], r["score"])
-                for r in records
-            ])
