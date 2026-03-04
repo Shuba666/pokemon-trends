@@ -204,6 +204,7 @@ export default function App() {
   const [fullscreen, setFullscreen] = useState(false);
   const [detailPokemon, setDetailPokemon] = useState(null);
   const [now, setNow] = useState(Date.now());
+  const [toast, setToast] = useState(null);
 
   const dates = useMemo(() => {
     const all = [...new Set(rawData.map(i => i.date).filter(Boolean))].sort();
@@ -970,16 +971,14 @@ export default function App() {
                 {/* Share button */}
                 <button
                   onClick={() => {
-                    const text = `🏆 ${winner} beats ${loser} on Pokemon Trends OS!\n${winCountries} countries vs ${loseCountries} countries\n\npokemon-trends.vercel.app`;
-                    if (navigator.share) {
-                      navigator.share({ title: 'Pokemon Trends OS', text });
-                    } else {
-                      navigator.clipboard.writeText(text);
-                      alert('Copied to clipboard!');
-                    }
+                    const url = `https://pokemon-trends.vercel.app/?vs=${encodeURIComponent(winner)}&vs2=${encodeURIComponent(loser)}`;
+                    navigator.clipboard.writeText(url).then(() => {
+                      setToast('🔗 Link copied!');
+                      setTimeout(() => setToast(null), 2500);
+                    });
                   }}
                   style={{ marginTop: 12, width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid #334155', borderRadius: 8, padding: '7px', color: '#94a3b8', fontSize: 11, cursor: 'pointer', fontWeight: 600, letterSpacing: '0.04em' }}>
-                  🔗 Share Result
+                  🔗 Copy Link
                 </button>
               </div>
             </motion.div>
@@ -1124,6 +1123,26 @@ export default function App() {
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* TOAST */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            style={{
+              position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+              background: '#1e293b', border: '1px solid #4ade80',
+              borderRadius: 10, padding: '10px 20px',
+              fontSize: 13, fontWeight: 600, color: '#4ade80',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              zIndex: 9999, whiteSpace: 'nowrap',
+            }}>
+            {toast}
+          </motion.div>
+        )}
       </AnimatePresence>
 
     </div>
