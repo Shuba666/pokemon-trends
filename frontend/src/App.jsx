@@ -194,6 +194,7 @@ export default function App() {
   const [selCountry, setSelCountry] = useState(null);
   const [versusMode, setVersusMode] = useState(false);
   const [versusCountries, setVersusCountries] = useState([]);
+  const [versusPokemon, setVersusPokemon] = useState(["", ""]);
   const [pokeCache, setPokeCache] = useState({});
   const [bottomTab, setBottomTab] = useState('cards');
   const [hovered, setHovered] = useState(null);
@@ -290,11 +291,71 @@ export default function App() {
     }
   };
 
+
+  // Skeleton pulse animation style
+  const skelStyle = (w = '100%', h = 12) => ({
+    width: w, height: h, borderRadius: 6,
+    background: 'linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%)',
+    backgroundSize: '200% 100%',
+    animation: 'shimmer 1.4s infinite',
+  });
+
   if (loading) return (
-    <div style={{ background: '#0f172a', height: '100vh', color: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace', gap: 20 }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-        style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid #dc2626', borderTopColor: 'transparent' }} />
-      <p style={{ fontSize: 13, color: '#94a3b8', letterSpacing: '0.1em' }}>SYNCING POKEMON TRENDS OS...</p>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a', color: '#f1f5f9', fontFamily: "'Segoe UI', sans-serif", overflow: 'hidden' }}>
+      <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
+
+      {/* Header skeleton */}
+      <header style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '0 20px', flexShrink: 0 }}>
+        <div style={{ height: 50, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>⚡ POKEMON TRENDS OS</h1>
+          <div style={{ flex: 1, maxWidth: 380, ...skelStyle('100%', 8) }} />
+        </div>
+        <div style={{ display: 'flex', gap: 5, paddingBottom: 8 }}>
+          {Array(8).fill(0).map((_, i) => <div key={i} style={{ ...skelStyle(60, 24), borderRadius: 6 }} />)}
+        </div>
+      </header>
+
+      {/* Main skeleton */}
+      <main style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.6fr 1fr', gridTemplateRows: '1fr 280px', gap: 10, padding: 10 }}>
+        <div style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid #dc2626', borderTopColor: 'transparent' }} />
+          <p style={{ fontSize: 12, color: '#475569', letterSpacing: '0.1em' }}>LOADING MAP...</p>
+        </div>
+        <div style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {Array(8).fill(0).map((_, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ ...skelStyle(36, 36), borderRadius: '50%', flexShrink: 0 }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={skelStyle('60%', 10)} />
+                <div style={skelStyle('40%', 8)} />
+              </div>
+              <div style={skelStyle(40, 10)} />
+            </div>
+          ))}
+        </div>
+        <div style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', padding: 14, display: 'flex', gap: 10, overflow: 'hidden' }}>
+          {Array(5).fill(0).map((_, i) => (
+            <div key={i} style={{ minWidth: 190, background: '#0f172a', borderRadius: 10, padding: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={skelStyle('70%', 12)} />
+              <div style={skelStyle('50%', 10)} />
+              <div style={skelStyle('100%', 6)} />
+              <div style={skelStyle('85%', 6)} />
+            </div>
+          ))}
+        </div>
+        <div style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {Array(5).fill(0).map((_, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={skelStyle('40%', 10)} />
+                <div style={skelStyle('15%', 10)} />
+              </div>
+              <div style={skelStyle('100%', 4)} />
+            </div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 
@@ -365,18 +426,29 @@ export default function App() {
                   const name = geo.properties.name;
                   const d = mapData[name];
                   const isHighlight = versusCountries.includes(name) || selCountry === name;
+
+                  // VS mode: подсвечиваем карту по покемонам
+                  let fillColor = d ? (d.color || '#475569') : '#2d3748';
+                  let vsOpacity = 1;
+                  if (versusMode && versusPokemon[0] && versusPokemon[1] && versusPokemon[0] !== versusPokemon[1]) {
+                    const dominant = d?.dominant;
+                    if (dominant === versusPokemon[0]) fillColor = '#ef4444';
+                    else if (dominant === versusPokemon[1]) fillColor = '#3b82f6';
+                    else vsOpacity = 0.2;
+                  }
+
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      fill={d ? (d.color || '#475569') : '#2d3748'}
+                      fill={fillColor}
                       stroke="#0f172a" strokeWidth={0.5}
                       onClick={() => d && handleCountryClick(name)}
                       onMouseEnter={(evt) => d && setHovered({ name, x: evt.clientX, y: evt.clientY })}
                       onMouseMove={(evt) => hovered && setHovered(h => ({ ...h, x: evt.clientX, y: evt.clientY }))}
                       onMouseLeave={() => setHovered(null)}
                       style={{
-                        default: { outline: 'none', opacity: isHighlight ? 1 : (selCountry || versusCountries.length ? 0.6 : 1), filter: isHighlight ? 'brightness(1.4)' : 'none' },
+                        default: { outline: 'none', opacity: vsOpacity * (isHighlight ? 1 : (selCountry || versusCountries.length ? 0.6 : 1)), filter: isHighlight ? 'brightness(1.4)' : 'none' },
                         hover: { fill: '#ffffff', cursor: d ? 'pointer' : 'default', outline: 'none' },
                         pressed: { outline: 'none' }
                       }}
@@ -444,8 +516,8 @@ export default function App() {
               <div style={{ display: 'flex', gap: 10, overflowX: 'auto', height: '100%', alignItems: 'flex-start' }}
                 onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; e.preventDefault(); }}>
                 {(selCountry
-                  ? [[selCountry, mapData[selCountry]], ...Object.entries(mapData).filter(([n]) => n !== selCountry)]
-                  : Object.entries(mapData)
+                  ? [[selCountry, mapData[selCountry]], ...Object.entries(mapData).filter(([n]) => n !== selCountry).sort((a, b) => b[1].total - a[1].total)]
+                  : Object.entries(mapData).sort((a, b) => b[1].total - a[1].total)
                 ).map(([name, data]) => data && (
                   <div key={name} style={{
                     minWidth: 190, background: '#0f172a', padding: 12, borderRadius: 10,
@@ -536,39 +608,96 @@ export default function App() {
 
       {/* VERSUS PANEL */}
       <AnimatePresence>
-        {versusMode && versusCountries.length === 2 && (
+        {versusMode && (
           <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0f172a', borderTop: '2px solid #dc2626', padding: '16px 24px', display: 'flex', gap: 24, alignItems: 'flex-start', zIndex: 100 }}>
-            <button onClick={() => setVersusCountries([])} style={{ position: 'absolute', top: 10, right: 14, background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
-              <X size={16} />
-            </button>
-            <div style={{ color: '#dc2626', fontSize: 24, fontWeight: 900, alignSelf: 'center', flex: 'none' }}>VS</div>
-            {versusCountries.map(cname => {
-              const d = mapData[cname];
-              if (!d) return null;
-              return (
-                <div key={cname} style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-                    <PokeAvatar name={d.dominant} cache={pokeCache} size={36} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{cname}</div>
-                      <div style={{ fontSize: 11, color: d.color, textTransform: 'capitalize' }}>{d.type} · {formatNumber(d.total)}</div>
+            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0f172a', borderTop: '2px solid #dc2626', padding: '14px 24px', zIndex: 100, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <Swords size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Pokémon VS Mode
+              </span>
+              <button onClick={() => { setVersusMode(false); setVersusPokemon(['', '']); }}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Selectors + Stats */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+
+              {/* Pokemon A */}
+              {[0, 1].map(idx => {
+                const color = idx === 0 ? '#ef4444' : '#3b82f6';
+                const name = versusPokemon[idx];
+                const allPokemon = [...new Set(Object.values(mapData).map(d => d.dominant))].sort();
+                const pi = pokeCache[pokeKey(name)];
+                const type = pi?.types?.[0]?.type?.name || 'unknown';
+
+                // Считаем сколько стран где этот покемон доминирует
+                const countriesWon = Object.entries(mapData).filter(([, d]) => d.dominant === name).length;
+
+                return (
+                  <React.Fragment key={idx}>
+                    <div style={{ flex: 1, background: '#1e293b', borderRadius: 12, padding: '10px 14px', border: `1px solid ${color}44` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: `${color}22`, border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {name && pi?.sprites?.front_default
+                            ? <img src={pi.sprites.front_default} alt={name} style={{ width: 40, imageRendering: 'pixelated' }} />
+                            : <span style={{ fontSize: 20 }}>{idx === 0 ? '🔴' : '🔵'}</span>}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <select value={name} onChange={e => setVersusPokemon(prev => { const n = [...prev]; n[idx] = e.target.value; return n; })}
+                            style={{ background: '#0f172a', border: `1px solid ${color}66`, borderRadius: 6, color: '#f1f5f9', fontSize: 12, padding: '4px 8px', width: '100%', cursor: 'pointer' }}>
+                            <option value="">— choose pokémon —</option>
+                            {allPokemon.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                          {name && <div style={{ fontSize: 10, color: TYPE_COLORS[type] || '#94a3b8', marginTop: 3, textTransform: 'capitalize' }}>{type}</div>}
+                        </div>
+                      </div>
+                      {name && (
+                        <div style={{ display: 'flex', gap: 16 }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: 20, fontWeight: 900, color }}>{countriesWon}</div>
+                            <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Countries</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: 20, fontWeight: 900, color }}>
+                              {formatNumber(Object.values(mapData).reduce((sum, d) => {
+                                const p = d.top.find(t => t.name === name);
+                                return sum + (p?.val || 0);
+                              }, 0))}
+                            </div>
+                            <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Score</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {idx === 0 && (
+                      <div style={{ color: '#dc2626', fontSize: 22, fontWeight: 900, flexShrink: 0 }}>VS</div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Winner banner */}
+              {versusPokemon[0] && versusPokemon[1] && versusPokemon[0] !== versusPokemon[1] && (() => {
+                const scoreA = Object.values(mapData).reduce((s, d) => s + (d.top.find(t => t.name === versusPokemon[0])?.val || 0), 0);
+                const scoreB = Object.values(mapData).reduce((s, d) => s + (d.top.find(t => t.name === versusPokemon[1])?.val || 0), 0);
+                const winner = scoreA > scoreB ? versusPokemon[0] : versusPokemon[1];
+                const winColor = scoreA > scoreB ? '#ef4444' : '#3b82f6';
+                return (
+                  <div style={{ flex: 1, background: `${winColor}11`, border: `1px solid ${winColor}44`, borderRadius: 12, padding: '10px 14px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>🏆 Winner</div>
+                    <PokeAvatar name={winner} cache={pokeCache} size={44} />
+                    <div style={{ fontWeight: 900, fontSize: 14, color: winColor, marginTop: 6, textTransform: 'capitalize' }}>{winner}</div>
+                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                      {formatNumber(Math.abs(scoreA - scoreB))} score ahead
                     </div>
                   </div>
-                  {d.top.map(p => (
-                    <div key={p.name} style={{ marginBottom: 6 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
-                        <span style={{ color: TYPE_COLORS[p.type], textTransform: 'capitalize' }}>{p.name}</span>
-                        <span>{p.pc}%</span>
-                      </div>
-                      <div style={{ height: 4, background: '#1e293b', borderRadius: 2 }}>
-                        <div style={{ width: `${p.pc}%`, height: '100%', background: TYPE_COLORS[p.type], borderRadius: 2, transition: 'width 0.5s' }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
+                );
+              })()}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
