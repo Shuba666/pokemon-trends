@@ -580,22 +580,24 @@ export default function App() {
                     onClick={e => { e.stopPropagation(); setDetailPokemon(data.dominant); }}>{data.dominant}</div>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                  {formatNumber(data.total)}
+              <div style={{ textAlign: 'right', position: 'relative' }}
+                title="Google Trends interest score. 100 = peak popularity for this country on the selected date. Based on relative search interest, not absolute query count.">
+                <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                  {Math.round((data.total / maxTotal) * 100)}
+                  <span style={{ fontSize: 9, color: '#475569', fontWeight: 400 }}>/100</span>
                   {trendIcon && <span style={{ fontSize: 11, color: trendColor, fontWeight: 900 }}>{trendIcon}</span>}
                 </div>
-                <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>{data.type}</div>
+                <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>interest ℹ️</div>
               </div>
             </motion.div>
             );
           })}
         </section>
 
-        {/* BOTTOM LEFT — Cards / Bar Race tabs */}
+        {/* BOTTOM LEFT — Cards / Type Distribution tabs */}
         <section style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #334155', flexShrink: 0 }}>
-            {[['cards', '🃏 Country Cards'], ['race', '🏁 Bar Race']].map(([key, label]) => (
+            {[['cards', '🃏 Country Cards'], ['types', '📊 Type Distribution']].map(([key, label]) => (
               <button key={key} onClick={() => setBottomTab(key)} style={{
                 flex: 1, padding: '8px', background: bottomTab === key ? '#0f172a' : 'transparent',
                 border: 'none', color: bottomTab === key ? '#f1f5f9' : '#64748b',
@@ -641,7 +643,69 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <BarRace mapData={mapData} />
+              /* TYPE DISTRIBUTION */
+              (() => {
+                const typeCounts = {};
+                const typeScores = {};
+                Object.values(mapData).forEach(d => {
+                  typeCounts[d.type] = (typeCounts[d.type] || 0) + 1;
+                  typeScores[d.type] = (typeScores[d.type] || 0) + d.total;
+                });
+                const total = Object.values(typeCounts).reduce((a, b) => a + b, 0);
+                const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+                const maxCount = sorted[0]?.[1] || 1;
+
+                return (
+                  <div style={{ display: 'flex', gap: 20, height: '100%' }}>
+                    {/* Bar chart */}
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {sorted.map(([type, count], i) => {
+                        const color = TYPE_COLORS[type] || '#94a3b8';
+                        const pct = Math.round((count / total) * 100);
+                        return (
+                          <motion.div key={type}
+                            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.03 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 3, alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+                                <span style={{ color, textTransform: 'capitalize', fontWeight: 600 }}>{type}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, color: '#64748b' }}>
+                                <span>{count} {count === 1 ? 'country' : 'countries'}</span>
+                                <span style={{ color: '#334155' }}>·</span>
+                                <span style={{ color: '#94a3b8' }}>{pct}%</span>
+                              </div>
+                            </div>
+                            <div style={{ height: 6, background: '#0f172a', borderRadius: 3 }}>
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(count / maxCount) * 100}%` }}
+                                transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.03 }}
+                                style={{ height: '100%', background: color, borderRadius: 3, opacity: 0.85 }}
+                              />
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Summary */}
+                    <div style={{ width: 110, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+                      <div style={{ background: '#0f172a', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: TYPE_COLORS[sorted[0]?.[0]] || '#94a3b8' }}>{sorted[0]?.[1]}</div>
+                        <div style={{ fontSize: 9, color: '#475569', marginTop: 2 }}>countries lead by</div>
+                        <div style={{ fontSize: 10, color: TYPE_COLORS[sorted[0]?.[0]] || '#94a3b8', textTransform: 'capitalize', fontWeight: 700 }}>{sorted[0]?.[0]}</div>
+                      </div>
+                      <div style={{ background: '#0f172a', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: '#f1f5f9' }}>{sorted.length}</div>
+                        <div style={{ fontSize: 9, color: '#475569', marginTop: 2 }}>active types</div>
+                        <div style={{ fontSize: 9, color: '#334155' }}>of {ALL_TYPES.length} total</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
             )}
           </div>
         </section>
