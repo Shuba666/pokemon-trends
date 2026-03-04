@@ -414,12 +414,12 @@ export default function App() {
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+        #main-grid { display: grid; grid-template-columns: 1.6fr 1fr; grid-template-rows: 1fr 280px; gap: 10px; padding: 10px; overflow: hidden; flex: 1; }
         @media (max-width: 768px) {
-          .main-grid { grid-template-columns: 1fr !important; grid-template-rows: 300px auto auto auto !important; }
-          .header-slider { display: none !important; }
-          .header-countdown { display: none !important; }
-          .type-pills { gap: 3px !important; }
-          .type-pill { padding: 3px 6px !important; font-size: 9px !important; }
+          #main-grid { grid-template-columns: 1fr !important; grid-template-rows: 260px 1fr 240px 240px !important; overflow-y: auto !important; height: auto !important; }
+          #header-slider { display: none !important; }
+          #header-countdown { display: none !important; }
+          #header-title { font-size: 13px !important; }
         }
       `}</style>
 
@@ -430,7 +430,7 @@ export default function App() {
 
           {/* NEW: Time Slider в хедере */}
           {dates.length > 0 && (
-            <div style={{ flex: 1, maxWidth: 380 }}>
+            <div id="header-slider" style={{ flex: 1, maxWidth: 380 }}>
               <TimeSlider dates={dates} currentIdx={dateIdx} onChange={setDateIdx} />
             </div>
           )}
@@ -445,7 +445,7 @@ export default function App() {
               const h = Math.floor(diff / 3600000);
               const m = Math.floor((diff % 3600000) / 60000);
               return (
-                <div style={{ background: 'rgba(0,0,0,0.25)', padding: '5px 10px', borderRadius: 8, fontSize: 10, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>
+                <div id="header-countdown" style={{ background: 'rgba(0,0,0,0.25)', padding: '5px 10px', borderRadius: 8, fontSize: 10, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>
                   🔄 {h}h {m}m
                 </div>
               );
@@ -484,7 +484,7 @@ export default function App() {
       </header>
 
       {/* MAIN GRID */}
-      <main className="main-grid" style={{ flex: 1, display: "grid", gridTemplateColumns: "1.6fr 1fr", gridTemplateRows: "1fr 280px", gap: 10, padding: 10, overflow: "hidden" }}>
+      <main id="main-grid">
 
         {/* WORLD MAP */}
         <section style={fullscreen
@@ -1129,11 +1129,11 @@ export default function App() {
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 20, x: '-50%' }}
             style={{
-              position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+              position: 'fixed', bottom: 24, left: '50%',
               background: '#1e293b', border: '1px solid #4ade80',
               borderRadius: 10, padding: '10px 20px',
               fontSize: 13, fontWeight: 600, color: '#4ade80',
