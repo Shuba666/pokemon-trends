@@ -408,34 +408,58 @@ export default function App() {
   );
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a', color: '#f1f5f9', fontFamily: "'Segoe UI', sans-serif", overflow: 'hidden' }}>
+    <div id="app-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a', color: '#f1f5f9', fontFamily: "'Segoe UI', sans-serif", overflow: 'hidden' }}>
       <style>{`
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-        #main-grid { display: grid; grid-template-columns: 1.6fr 1fr; grid-template-rows: 1fr 280px; gap: 10px; padding: 10px; overflow: hidden; flex: 1; }
+
+        #main-grid {
+          display: grid;
+          grid-template-columns: 1.6fr 1fr;
+          grid-template-rows: 1fr 280px;
+          gap: 10px;
+          padding: 10px;
+          overflow: hidden;
+          flex: 1;
+        }
+
+        /* Мобилка */
         @media (max-width: 768px) {
-          #main-grid { grid-template-columns: 1fr !important; grid-template-rows: 260px 1fr 240px 240px !important; overflow-y: auto !important; height: auto !important; }
+          #app-root { height: auto !important; overflow: auto !important; }
+          #main-grid {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: auto !important;
+            overflow: visible !important;
+            flex: none !important;
+            height: auto !important;
+          }
+          #map-section { height: 280px !important; }
+          #local-trends-section { max-height: 400px; overflow-y: auto; }
+          #bottom-section { height: 280px !important; }
+          #global-top-section { height: auto !important; }
+          #type-legend { display: none !important; }
           #header-slider { display: none !important; }
           #header-countdown { display: none !important; }
-          #header-title { font-size: 13px !important; }
+          #header-row { flex-wrap: wrap; height: auto !important; padding: 8px 0 !important; gap: 6px !important; }
+          #header-search { width: 100% !important; }
+          #type-pills { padding-bottom: 6px !important; }
         }
       `}</style>
 
       {/* HEADER */}
       <header style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '0 20px', flexShrink: 0, boxShadow: '0 2px 20px rgba(220,38,38,0.4)' }}>
-        <div style={{ height: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div id="header-row" style={{ height: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>⚡ POKEMON TRENDS OS</h1>
 
-          {/* NEW: Time Slider в хедере */}
           {dates.length > 0 && (
             <div id="header-slider" style={{ flex: 1, maxWidth: 380 }}>
               <TimeSlider dates={dates} currentIdx={dateIdx} onChange={setDateIdx} />
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <div id="header-search" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
             {/* Countdown timer */}
             {(() => {
               const next3am = new Date();
@@ -487,7 +511,7 @@ export default function App() {
       <main id="main-grid">
 
         {/* WORLD MAP */}
-        <section style={fullscreen
+        <section id="map-section" style={fullscreen
           ? { position: 'fixed', inset: 0, zIndex: 150, background: '#1e293b', borderRadius: 0 }
           : { background: '#1e293b', borderRadius: 14, border: '1px solid #334155', position: 'relative', overflow: 'hidden' }}>
           {versusMode && (
@@ -575,7 +599,7 @@ export default function App() {
 
           {/* Type legend */}
           {!fullscreen && (
-            <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, background: 'rgba(15,23,42,0.85)', borderRadius: 8, padding: '8px 10px', display: 'flex', flexWrap: 'wrap', gap: '4px 8px', maxWidth: 180 }}>
+            <div id="type-legend" style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, background: 'rgba(15,23,42,0.85)', borderRadius: 8, padding: '8px 10px', display: 'flex', flexWrap: 'wrap', gap: '4px 8px', maxWidth: 180 }}>
               {Object.entries(TYPE_COLORS).filter(([t]) => t !== 'unknown').map(([type, color]) => (
                 <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, textTransform: 'capitalize', color: '#94a3b8' }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
@@ -587,7 +611,7 @@ export default function App() {
         </section>
 
         {/* LOCAL TRENDS */}
-        <section style={{ background: '#1e293b', borderRadius: 14, padding: '14px 10px', overflowY: 'auto', border: '1px solid #334155' }}>
+        <section id='local-trends-section' style={{ background: '#1e293b', borderRadius: 14, padding: '14px 10px', overflowY: 'auto', border: '1px solid #334155' }}>
           <h3 style={{ marginBottom: 10, fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             <Globe size={12} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Local Trends
           </h3>
@@ -630,7 +654,7 @@ export default function App() {
         </section>
 
         {/* BOTTOM LEFT — Cards / Type Distribution tabs */}
-        <section style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <section id="bottom-section" style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #334155', flexShrink: 0 }}>
             {[['cards', '🃏 Country Cards'], ['types', '📊 Type Distribution']].map(([key, label]) => (
               <button key={key} onClick={() => setBottomTab(key)} style={{
@@ -746,7 +770,7 @@ export default function App() {
         </section>
 
         {/* GLOBAL TOP POKEMON */}
-        <section style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', padding: '12px 14px' }}>
+        <section id="global-top-section" style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', padding: '12px 14px' }}>
           <h3 style={{ marginBottom: 10, fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             <TrendingUp size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Global Top Pokémon
           </h3>
