@@ -703,17 +703,13 @@ export default function App() {
           const pct = Math.round((winScore / (winScore + loseScore)) * 100);
 
           return (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, pointerEvents: 'none' }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              style={{
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-
-                zIndex: 200, pointerEvents: 'all',
-                width: 320,
-              }}
+              style={{ pointerEvents: 'all', width: 320 }}
             >
               {/* Glow backdrop */}
               <div style={{
@@ -781,6 +777,7 @@ export default function App() {
                 </div>
               </div>
             </motion.div>
+            </div>
           );
         })()}
       </AnimatePresence>
