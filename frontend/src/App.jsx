@@ -442,7 +442,7 @@ export default function App() {
           <div style={{ flex: 1, overflow: 'hidden', padding: '10px 12px' }}>
             {bottomTab === 'cards' ? (
               <div style={{ display: 'flex', gap: 10, overflowX: 'auto', height: '100%', alignItems: 'flex-start' }}
-                onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; e.preventDefault(); }}
+                onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; e.preventDefault(); }}>
                 {(selCountry
                   ? [[selCountry, mapData[selCountry]], ...Object.entries(mapData).filter(([n]) => n !== selCountry)]
                   : Object.entries(mapData)
