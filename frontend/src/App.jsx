@@ -355,7 +355,7 @@ export default function App() {
       {/* Header skeleton */}
       <header style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '0 20px', flexShrink: 0 }}>
         <div style={{ height: 50, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>⚡ POKEMON TRENDS OS</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>⚡ POKEMON TRENDS</h1>
           <div style={{ flex: 1, maxWidth: 380, ...skelStyle('100%', 8) }} />
         </div>
         <div style={{ display: 'flex', gap: 5, paddingBottom: 8 }}>
@@ -438,7 +438,7 @@ export default function App() {
       {/* HEADER */}
       <header style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '0 20px', flexShrink: 0, boxShadow: '0 2px 20px rgba(220,38,38,0.4)' }}>
         <div id="header-row" style={{ height: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>⚡ POKEMON TRENDS OS</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>⚡ POKEMON TRENDS</h1>
 
           {dates.length > 0 && (
             <div id="header-slider" style={{ flex: 1, maxWidth: 380 }}>
@@ -1053,7 +1053,10 @@ export default function App() {
                 {/* History chart */}
                 {historyArr.length > 1 && (
                   <div>
-                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Score History</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
+                      <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Score History</div>
+                      <div style={{ fontSize: 9, color: '#334155' }}>Google Trends raw score</div>
+                    </div>
                     <ResponsiveContainer width="100%" height={80}>
                       <BarChart data={historyArr} barSize={16}>
                         <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#475569' }} axisLine={false} tickLine={false} />
