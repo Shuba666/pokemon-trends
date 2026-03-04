@@ -408,43 +408,30 @@ export default function App() {
   );
 
   return (
-    <div id="app-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a', color: '#f1f5f9', fontFamily: "'Segoe UI', sans-serif", overflow: 'hidden' }}>
+    <div id="app-root" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a', color: '#f1f5f9', fontFamily: "'Segoe UI', sans-serif", overflow: 'hidden' }}>
       <style>{`
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
 
-        #main-grid {
-          display: grid;
-          grid-template-columns: 1.6fr 1fr;
-          grid-template-rows: 1fr 280px;
-          gap: 10px;
-          padding: 10px;
-          overflow: hidden;
-          flex: 1;
-        }
-
-        /* Мобилка */
         @media (max-width: 768px) {
-          #app-root { height: auto !important; overflow: auto !important; }
+          #app-root { height: auto !important; overflow-y: auto !important; overflow-x: hidden !important; }
           #main-grid {
-            grid-template-columns: 1fr !important;
-            grid-template-rows: auto !important;
+            display: block !important;
             overflow: visible !important;
-            flex: none !important;
             height: auto !important;
+            flex: none !important;
+            padding: 8px !important;
           }
-          #map-section { height: 280px !important; }
-          #local-trends-section { max-height: 400px; overflow-y: auto; }
-          #bottom-section { height: 280px !important; }
-          #global-top-section { height: auto !important; }
+          #main-grid > section { margin-bottom: 10px; border-radius: 12px; }
+          #map-section { height: 260px !important; overflow: hidden; }
+          #local-trends-section { height: auto !important; max-height: none !important; overflow: visible !important; }
+          #bottom-section { height: 300px !important; }
+          #global-top-section { height: auto !important; padding-bottom: 20px !important; }
           #type-legend { display: none !important; }
           #header-slider { display: none !important; }
           #header-countdown { display: none !important; }
-          #header-row { flex-wrap: wrap; height: auto !important; padding: 8px 0 !important; gap: 6px !important; }
-          #header-search { width: 100% !important; }
-          #type-pills { padding-bottom: 6px !important; }
         }
       `}</style>
 
