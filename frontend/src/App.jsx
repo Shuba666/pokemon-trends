@@ -709,9 +709,9 @@ export default function App() {
               exit={{ opacity: 0, scale: 0.85 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               style={{
-                position: 'fixed', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                zIndex: 200, pointerEvents: 'none',
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+
+                zIndex: 200, pointerEvents: 'all',
                 width: 320,
               }}
             >
@@ -730,7 +730,12 @@ export default function App() {
                 padding: '24px 28px',
                 textAlign: 'center',
                 boxShadow: `0 0 40px ${winColor}44, 0 20px 60px rgba(0,0,0,0.8)`,
+                width: 320,
               }}>
+                <button onClick={() => setVersusPokemon(['', ''])}
+                  style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                  <X size={16} />
+                </button>
                 {/* Trophy */}
                 <div style={{ fontSize: 32, marginBottom: 4 }}>🏆</div>
                 <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Global Winner</div>
