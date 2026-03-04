@@ -441,7 +441,8 @@ export default function App() {
 
           <div style={{ flex: 1, overflow: 'hidden', padding: '10px 12px' }}>
             {bottomTab === 'cards' ? (
-              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', height: '100%', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', height: '100%', alignItems: 'flex-start' }}
+                onWheel={e => { e.currentTarget.scrollLeft += e.deltaY; e.preventDefault(); }}
                 {(selCountry
                   ? [[selCountry, mapData[selCountry]], ...Object.entries(mapData).filter(([n]) => n !== selCountry)]
                   : Object.entries(mapData)
@@ -494,7 +495,7 @@ export default function App() {
             });
             const topPokemon = Object.entries(globalScores)
               .sort((a, b) => b[1] - a[1])
-              .slice(0, 8)
+              .slice(0, 5)
               .map(([name, val]) => {
                 const pi = pokeCache[pokeKey(name)];
                 const type = pi?.types?.[0]?.type?.name || 'unknown';
