@@ -221,16 +221,37 @@ export default function App() {
       const data = res.data.data;
       setRawData(data);
       const uniqueNames = [...new Set(data.map(i => i.pokemon))];
-      for (let i = 0; i < uniqueNames.length; i += 20) {
-        const batch = uniqueNames.slice(i, i + 20);
+
+      // Загружаем кэш из localStorage (хранится 24 часа)
+      const CACHE_KEY = 'pokeSprites_v1';
+      const CACHE_TTL = 24 * 60 * 60 * 1000;
+      let cached = {};
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const { ts, data: d } = JSON.parse(raw);
+          if (Date.now() - ts < CACHE_TTL) cached = d;
+        }
+      } catch {}
+
+      // Фильтруем только те покемоны которых нет в кэше
+      const toFetch = uniqueNames.filter(n => !cached[pokeKey(n)]);
+      setPokeCache(cached);
+
+      for (let i = 0; i < toFetch.length; i += 20) {
+        const batch = toFetch.slice(i, i + 20);
         await Promise.all(batch.map(async (name) => {
           const key = pokeKey(name);
           try {
             const r = await axios.get(`https://pokeapi.co/api/v2/pokemon/${key}`);
+            cached = { ...cached, [key]: r.data };
             setPokeCache(prev => ({ ...prev, [key]: r.data }));
           } catch {}
         }));
       }
+
+      // Сохраняем обновлённый кэш
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: cached })); } catch {}
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -387,6 +408,19 @@ export default function App() {
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0f172a', color: '#f1f5f9', fontFamily: "'Segoe UI', sans-serif", overflow: 'hidden' }}>
+      <style>{`
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+        @media (max-width: 768px) {
+          .main-grid { grid-template-columns: 1fr !important; grid-template-rows: 300px auto auto auto !important; }
+          .header-slider { display: none !important; }
+          .header-countdown { display: none !important; }
+          .type-pills { gap: 3px !important; }
+          .type-pill { padding: 3px 6px !important; font-size: 9px !important; }
+        }
+      `}</style>
 
       {/* HEADER */}
       <header style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '0 20px', flexShrink: 0, boxShadow: '0 2px 20px rgba(220,38,38,0.4)' }}>
@@ -449,7 +483,7 @@ export default function App() {
       </header>
 
       {/* MAIN GRID */}
-      <main style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.6fr 1fr', gridTemplateRows: '1fr 280px', gap: 10, padding: 10, overflow: 'hidden' }}>
+      <main className="main-grid" style={{ flex: 1, display: "grid", gridTemplateColumns: "1.6fr 1fr", gridTemplateRows: "1fr 280px", gap: 10, padding: 10, overflow: "hidden" }}>
 
         {/* WORLD MAP */}
         <section style={fullscreen
@@ -932,6 +966,21 @@ export default function App() {
                 <div style={{ marginTop: 8, fontSize: 10, color: '#334155', textTransform: 'capitalize' }}>
                   vs {loser}
                 </div>
+
+                {/* Share button */}
+                <button
+                  onClick={() => {
+                    const text = `🏆 ${winner} beats ${loser} on Pokemon Trends OS!\n${winCountries} countries vs ${loseCountries} countries\n\npokemon-trends.vercel.app`;
+                    if (navigator.share) {
+                      navigator.share({ title: 'Pokemon Trends OS', text });
+                    } else {
+                      navigator.clipboard.writeText(text);
+                      alert('Copied to clipboard!');
+                    }
+                  }}
+                  style={{ marginTop: 12, width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid #334155', borderRadius: 8, padding: '7px', color: '#94a3b8', fontSize: 11, cursor: 'pointer', fontWeight: 600, letterSpacing: '0.04em' }}>
+                  🔗 Share Result
+                </button>
               </div>
             </motion.div>
             </div>
