@@ -508,7 +508,7 @@ export default function App() {
       </header>
 
       {/* MAIN GRID */}
-      <main id="main-grid">
+      <main id="main-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.6fr 1fr', gridTemplateRows: '1fr 280px', gap: 10, padding: 10, overflow: 'hidden' }}>
 
         {/* WORLD MAP */}
         <section id="map-section" style={fullscreen
