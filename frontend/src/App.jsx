@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Search, Swords, X, TrendingUp, Download, Play, Pause, BarChart2 } from 'lucide-react';
+import { Globe, Search, Swords, X, TrendingUp, Download, Play, Pause, BarChart2, Maximize2, Minimize2 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, LabelList } from 'recharts';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 
@@ -198,7 +198,12 @@ export default function App() {
   const [pokeCache, setPokeCache] = useState({});
   const [bottomTab, setBottomTab] = useState('cards');
   const [hovered, setHovered] = useState(null);
-  const [dateIdx, setDateIdx] = useState(0); // будет обновлён после загрузки дат
+  const [dateIdx, setDateIdx] = useState(0);
+  const [heatmap, setHeatmap] = useState(false);
+  const [detailCountry, setDetailCountry] = useState(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [detailPokemon, setDetailPokemon] = useState(null);
+  const [now, setNow] = useState(Date.now());
 
   const dates = useMemo(() => {
     const all = [...new Set(rawData.map(i => i.date).filter(Boolean))].sort();
@@ -229,6 +234,25 @@ export default function App() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  // Таймер — обновляем каждую минуту
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Данные за предыдущий день для trend indicators
+  const prevMapData = useMemo(() => {
+    if (dateIdx === 0 || dates.length < 2) return {};
+    const prevDate = dates[dateIdx - 1];
+    const acc = {};
+    rawData.forEach(i => {
+      if (i.date !== prevDate) return;
+      if (!acc[i.country]) acc[i.country] = { total: 0 };
+      acc[i.country].total += i.score;
+    });
+    return acc;
+  }, [rawData, dateIdx, dates]);
 
   const mapData = useMemo(() => {
     const acc = {};
@@ -264,6 +288,8 @@ export default function App() {
     });
     return result;
   }, [rawData, search, activeTypes, pokeCache, dateIdx, dates]);
+
+  const maxTotal = useMemo(() => Math.max(...Object.values(mapData).map(d => d.total), 1), [mapData]);
 
   const topCountries = useMemo(() =>
     Object.entries(mapData).sort((a, b) => b[1].total - a[1].total).slice(0, 15),
@@ -375,6 +401,20 @@ export default function App() {
           )}
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            {/* Countdown timer */}
+            {(() => {
+              const next3am = new Date();
+              next3am.setUTCHours(3, 0, 0, 0);
+              if (Date.now() > next3am.getTime()) next3am.setUTCDate(next3am.getUTCDate() + 1);
+              const diff = next3am.getTime() - now;
+              const h = Math.floor(diff / 3600000);
+              const m = Math.floor((diff % 3600000) / 60000);
+              return (
+                <div style={{ background: 'rgba(0,0,0,0.25)', padding: '5px 10px', borderRadius: 8, fontSize: 10, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>
+                  🔄 {h}h {m}m
+                </div>
+              );
+            })()}
             <div style={{ background: 'rgba(0,0,0,0.25)', padding: '6px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
               <Search size={13} />
               <input placeholder="Search..." value={search}
@@ -412,7 +452,9 @@ export default function App() {
       <main style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.6fr 1fr', gridTemplateRows: '1fr 280px', gap: 10, padding: 10, overflow: 'hidden' }}>
 
         {/* WORLD MAP */}
-        <section style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', position: 'relative', overflow: 'hidden' }}>
+        <section style={fullscreen
+          ? { position: 'fixed', inset: 0, zIndex: 150, background: '#1e293b', borderRadius: 0 }
+          : { background: '#1e293b', borderRadius: 14, border: '1px solid #334155', position: 'relative', overflow: 'hidden' }}>
           {versusMode && (
             <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, background: 'rgba(0,0,0,0.75)', padding: '7px 12px', borderRadius: 8, fontSize: 11, color: '#94a3b8' }}>
               <Swords size={11} style={{ marginRight: 5, verticalAlign: 'middle', color: '#dc2626' }} />
@@ -421,6 +463,11 @@ export default function App() {
                 : 'Choose 2 Pokémon below'}
             </div>
           )}
+          {/* Heatmap toggle */}
+          <button onClick={() => setHeatmap(h => !h)}
+            style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 10, background: heatmap ? '#dc2626' : 'rgba(0,0,0,0.6)', border: `1px solid ${heatmap ? '#dc2626' : '#334155'}`, borderRadius: 7, padding: '5px 10px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            🌡 {heatmap ? 'Heatmap ON' : 'Heatmap'}
+          </button>
           <ComposableMap projectionConfig={{ scale: 145 }} style={{ width: '100%', height: '100%' }}>
             <ZoomableGroup>
               <Geographies geography={geoUrl}>
@@ -429,8 +476,23 @@ export default function App() {
                   const d = mapData[name];
                   const isHighlight = versusCountries.includes(name) || selCountry === name;
 
-                  // VS mode: подсвечиваем карту по покемонам
-                  let fillColor = d ? (d.color || '#475569') : '#2d3748';
+                  // Search highlight — подсвечиваем страны где доминирует искомый покемон
+                  const searchMatch = search.length > 1 && d?.dominant?.toLowerCase().includes(search.toLowerCase());
+                  const searchDim = search.length > 1 && !searchMatch;
+
+                  // Heatmap цвет
+                  let fillColor;
+                  if (heatmap && d) {
+                    const intensity = d.total / maxTotal;
+                    const r = Math.round(20 + intensity * 220);
+                    const g = Math.round(20 - intensity * 10);
+                    const b = Math.round(60 - intensity * 40);
+                    fillColor = `rgb(${r},${g},${b})`;
+                  } else {
+                    fillColor = d ? (d.color || '#475569') : '#2d3748';
+                  }
+
+                  // VS mode
                   let vsOpacity = 1;
                   if (versusMode && versusPokemon[0] && versusPokemon[1] && versusPokemon[0] !== versusPokemon[1]) {
                     const dominant = d?.dominant;
@@ -439,18 +501,20 @@ export default function App() {
                     else vsOpacity = 0.2;
                   }
 
+                  const opacity = vsOpacity * (searchDim ? 0.15 : searchMatch ? 1 : isHighlight ? 1 : (selCountry || versusCountries.length ? 0.6 : 1));
+
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
                       fill={fillColor}
                       stroke="#0f172a" strokeWidth={0.5}
-                      onClick={() => d && !versusMode && handleCountryClick(name)}
+                      onClick={() => d && !versusMode && setDetailCountry(name)}
                       onMouseEnter={(evt) => d && setHovered({ name, x: evt.clientX, y: evt.clientY })}
                       onMouseMove={(evt) => hovered && setHovered(h => ({ ...h, x: evt.clientX, y: evt.clientY }))}
                       onMouseLeave={() => setHovered(null)}
                       style={{
-                        default: { outline: 'none', opacity: vsOpacity * (isHighlight ? 1 : (selCountry || versusCountries.length ? 0.6 : 1)), filter: isHighlight ? 'brightness(1.4)' : 'none' },
+                        default: { outline: 'none', opacity, filter: (isHighlight || searchMatch) ? 'brightness(1.4)' : 'none' },
                         hover: { fill: '#ffffff', cursor: d ? 'pointer' : 'default', outline: 'none' },
                         pressed: { outline: 'none' }
                       }}
@@ -461,12 +525,30 @@ export default function App() {
             </ZoomableGroup>
           </ComposableMap>
 
-          {/* NEW: Hover tooltip */}
+          {/* Hover tooltip */}
           <AnimatePresence>
             {hovered && mapData[hovered.name] && (
               <MapTooltip data={mapData[hovered.name]} name={hovered.name} x={hovered.x} y={hovered.y} />
             )}
           </AnimatePresence>
+
+          {/* Fullscreen button */}
+          <button onClick={() => setFullscreen(f => !f)}
+            style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 10, background: 'rgba(0,0,0,0.6)', border: '1px solid #334155', borderRadius: 7, padding: '5px 8px', color: '#fff', cursor: 'pointer' }}>
+            {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
+
+          {/* Type legend */}
+          {!fullscreen && (
+            <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, background: 'rgba(15,23,42,0.85)', borderRadius: 8, padding: '8px 10px', display: 'flex', flexWrap: 'wrap', gap: '4px 8px', maxWidth: 180 }}>
+              {Object.entries(TYPE_COLORS).filter(([t]) => t !== 'unknown').map(([type, color]) => (
+                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, textTransform: 'capitalize', color: '#94a3b8' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+                  {type}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* LOCAL TRENDS */}
@@ -474,10 +556,15 @@ export default function App() {
           <h3 style={{ marginBottom: 10, fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             <Globe size={12} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Local Trends
           </h3>
-          {topCountries.map(([name, data], idx) => (
+          {topCountries.map(([name, data], idx) => {
+            const prev = prevMapData[name];
+            const trendDiff = prev ? data.total - prev.total : null;
+            const trendIcon = trendDiff === null ? null : trendDiff > 0 ? '↑' : trendDiff < 0 ? '↓' : '→';
+            const trendColor = trendDiff === null ? '#64748b' : trendDiff > 0 ? '#4ade80' : trendDiff < 0 ? '#f87171' : '#94a3b8';
+            return (
             <motion.div key={name}
               initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.025 }}
-              onClick={() => setSelCountry(name === selCountry ? null : name)}
+              onClick={() => setDetailCountry(name)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '8px 10px', background: selCountry === name ? 'rgba(255,255,255,0.06)' : '#0f172a',
@@ -489,15 +576,20 @@ export default function App() {
                 <PokeAvatar name={data.dominant} cache={pokeCache} size={30} />
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 12 }}>{name}</div>
-                  <div style={{ fontSize: 10, color: data.color, textTransform: 'capitalize' }}>{data.dominant}</div>
+                  <div style={{ fontSize: 10, color: data.color, textTransform: 'capitalize', cursor: 'pointer' }}
+                    onClick={e => { e.stopPropagation(); setDetailPokemon(data.dominant); }}>{data.dominant}</div>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700, fontSize: 12 }}>{formatNumber(data.total)}</div>
+                <div style={{ fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                  {formatNumber(data.total)}
+                  {trendIcon && <span style={{ fontSize: 11, color: trendColor, fontWeight: 900 }}>{trendIcon}</span>}
+                </div>
                 <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase' }}>{data.type}</div>
               </div>
             </motion.div>
-          ))}
+            );
+          })}
         </section>
 
         {/* BOTTOM LEFT — Cards / Bar Race tabs */}
@@ -585,7 +677,8 @@ export default function App() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ color: '#475569', fontSize: 10, minWidth: 14 }}>{i + 1}</span>
                         <PokeAvatar name={p.name} cache={pokeCache} size={22} />
-                        <span style={{ color: TYPE_COLORS[p.type] || '#94a3b8', textTransform: 'capitalize' }}>{p.name}</span>
+                        <span style={{ color: TYPE_COLORS[p.type] || '#94a3b8', textTransform: 'capitalize', cursor: 'pointer' }}
+                          onClick={() => setDetailPokemon(p.name)}>{p.name}</span>
                       </div>
                       <span style={{ color: '#64748b', fontSize: 10 }}>{formatNumber(p.val)}</span>
                     </div>
@@ -778,6 +871,146 @@ export default function App() {
               </div>
             </motion.div>
             </div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* COUNTRY DETAIL MODAL */}
+      <AnimatePresence>
+        {detailCountry && mapData[detailCountry] && (() => {
+          const d = mapData[detailCountry];
+          const history = rawData
+            .filter(i => i.country === detailCountry)
+            .reduce((acc, i) => {
+              acc[i.date] = (acc[i.date] || 0) + i.score;
+              return acc;
+            }, {});
+          const historyArr = Object.entries(history).sort().map(([date, val]) => ({ date: date.slice(5), val: Math.round(val) }));
+
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setDetailCountry(null)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                onClick={e => e.stopPropagation()}
+                style={{ background: '#1e293b', border: `2px solid ${d.color}`, borderRadius: 20, padding: '24px', width: 380, boxShadow: `0 0 40px ${d.color}33` }}>
+
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <PokeAvatar name={d.dominant} cache={pokeCache} size={48} />
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 18 }}>{detailCountry}</div>
+                      <div style={{ fontSize: 11, color: d.color, textTransform: 'capitalize' }}>{d.type} · {formatNumber(d.total)} total</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setDetailCountry(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+
+                {/* Top pokemon */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Top Pokémon</div>
+                  {d.top.map(p => (
+                    <div key={p.name} style={{ marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <PokeAvatar name={p.name} cache={pokeCache} size={20} />
+                          <span style={{ color: TYPE_COLORS[p.type], textTransform: 'capitalize' }}>{p.name}</span>
+                        </div>
+                        <span style={{ color: '#94a3b8' }}>{p.pc}%</span>
+                      </div>
+                      <div style={{ height: 4, background: '#0f172a', borderRadius: 2 }}>
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${p.pc}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+                          style={{ height: '100%', background: TYPE_COLORS[p.type], borderRadius: 2 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* History chart */}
+                {historyArr.length > 1 && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Score History</div>
+                    <ResponsiveContainer width="100%" height={80}>
+                      <BarChart data={historyArr} barSize={16}>
+                        <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#475569' }} axisLine={false} tickLine={false} />
+                        <Bar dataKey="val" fill={d.color} radius={[3, 3, 0, 0]} />
+                        <Tooltip contentStyle={{ background: '#0f172a', border: `1px solid ${d.color}`, borderRadius: 8, fontSize: 11 }}
+                          labelStyle={{ color: '#f1f5f9' }} itemStyle={{ color: d.color }} formatter={v => formatNumber(v)} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      </AnimatePresence>
+
+      {/* POKEMON DETAIL MODAL */}
+      <AnimatePresence>
+        {detailPokemon && (() => {
+          const pi = pokeCache[pokeKey(detailPokemon)];
+          const type = pi?.types?.[0]?.type?.name || 'unknown';
+          const color = TYPE_COLORS[type] || '#94a3b8';
+          const dominantIn = Object.entries(mapData).filter(([, d]) => d.dominant === detailPokemon).map(([c]) => c);
+          const totalScore = Object.values(mapData).reduce((s, d) => s + (d.top.find(t => t.name === detailPokemon)?.val || 0), 0);
+          const globalRank = Object.entries(
+            Object.values(mapData).reduce((acc, d) => {
+              d.top.forEach(p => { acc[p.name] = (acc[p.name] || 0) + p.val; });
+              return acc;
+            }, {})
+          ).sort((a, b) => b[1] - a[1]).findIndex(([n]) => n === detailPokemon) + 1;
+
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setDetailPokemon(null)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                onClick={e => e.stopPropagation()}
+                style={{ background: '#1e293b', border: `2px solid ${color}`, borderRadius: 20, padding: 28, width: 420, boxShadow: `0 0 60px ${color}44` }}>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 72, height: 72, borderRadius: '50%', background: `${color}22`, border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {pi?.sprites?.front_default && <img src={pi.sprites.front_default} alt={detailPokemon} style={{ width: 64, imageRendering: 'pixelated' }} />}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 22, textTransform: 'capitalize' }}>{detailPokemon}</div>
+                      <div style={{ fontSize: 12, color, textTransform: 'capitalize' }}>{pi?.types?.map(t => t.type.name).join(' / ') || type}</div>
+                      {pi?.stats && <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Base HP: {pi.stats[0]?.base_stat} · ATK: {pi.stats[1]?.base_stat}</div>}
+                    </div>
+                  </div>
+                  <button onClick={() => setDetailPokemon(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+
+                {/* Global stats */}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+                  {[['🌍 Countries', dominantIn.length], ['🏆 Global Rank', `#${globalRank}`], ['📊 Total Score', formatNumber(totalScore)]].map(([label, val]) => (
+                    <div key={label} style={{ flex: 1, background: '#0f172a', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 18, fontWeight: 900, color }}>{val}</div>
+                      <div style={{ fontSize: 9, color: '#475569', marginTop: 3 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dominant countries list */}
+                {dominantIn.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Dominates in</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {dominantIn.slice(0, 16).map(c => (
+                        <span key={c} onClick={() => { setDetailPokemon(null); setDetailCountry(c); }}
+                          style={{ background: `${color}22`, border: `1px solid ${color}44`, borderRadius: 6, padding: '3px 8px', fontSize: 10, color, cursor: 'pointer' }}>{c}</span>
+                      ))}
+                      {dominantIn.length > 16 && <span style={{ fontSize: 10, color: '#475569' }}>+{dominantIn.length - 16} more</span>}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
           );
         })()}
       </AnimatePresence>
