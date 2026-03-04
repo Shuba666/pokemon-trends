@@ -16,9 +16,12 @@ const TYPE_COLORS = {
 };
 
 const ALL_TYPES = Object.keys(TYPE_COLORS).filter(t => t !== 'unknown');
-const formatNumber = (num) =>
-  num >= 1000000 ? (num / 1000000).toFixed(1) + 'M' :
-  num >= 1000 ? (num / 1000).toFixed(1) + 'K' : String(num);
+const formatNumber = (num) => {
+  const n = Math.round(num);
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return String(n);
+};
 
 const pokeKey = (name) => String(name).toLowerCase().trim().replace(/\s+/g, '-');
 
@@ -194,12 +197,17 @@ export default function App() {
   const [pokeCache, setPokeCache] = useState({});
   const [bottomTab, setBottomTab] = useState('cards');
   const [hovered, setHovered] = useState(null);
-  const [dateIdx, setDateIdx] = useState(0);
+  const [dateIdx, setDateIdx] = useState(0); // будет обновлён после загрузки дат
 
   const dates = useMemo(() => {
     const all = [...new Set(rawData.map(i => i.date).filter(Boolean))].sort();
     return all.length ? all : [];
   }, [rawData]);
+
+  // При загрузке дат — автоматически ставим на последнюю (актуальную)
+  useEffect(() => {
+    if (dates.length > 0) setDateIdx(dates.length - 1);
+  }, [dates]);
 
   useEffect(() => {
     const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -471,28 +479,56 @@ export default function App() {
           </div>
         </section>
 
-        {/* PIE CHART */}
-        <section style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', padding: '12px 8px' }}>
-          <h3 style={{ marginBottom: 4, fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', paddingLeft: 8 }}>
-            <TrendingUp size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Top Countries Share
+        {/* GLOBAL TOP POKEMON */}
+        <section style={{ background: '#1e293b', borderRadius: 14, border: '1px solid #334155', padding: '12px 14px' }}>
+          <h3 style={{ marginBottom: 10, fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <TrendingUp size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Global Top Pokémon
           </h3>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="90%">
-              <PieChart>
-                <Pie data={pieData} innerRadius={52} outerRadius={78} dataKey="value" stroke="none" paddingAngle={2}>
-                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
-                  labelStyle={{ color: '#f1f5f9', fontWeight: 700 }}
-                  itemStyle={{ color: '#f1f5f9' }}
-                  formatter={(value, name) => [formatNumber(value), name]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80%', color: '#475569', fontSize: 12 }}>No data</div>
-          )}
+          {(() => {
+            // Считаем глобальный рейтинг покемонов
+            const globalScores = {};
+            Object.values(mapData).forEach(country => {
+              country.top.forEach(p => {
+                globalScores[p.name] = (globalScores[p.name] || 0) + p.val;
+              });
+            });
+            const topPokemon = Object.entries(globalScores)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 8)
+              .map(([name, val]) => {
+                const pi = pokeCache[pokeKey(name)];
+                const type = pi?.types?.[0]?.type?.name || 'unknown';
+                return { name, val, type };
+              });
+            const maxVal = topPokemon[0]?.val || 1;
+
+            return topPokemon.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {topPokemon.map((p, i) => (
+                  <div key={p.name}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: '#475569', fontSize: 10, minWidth: 14 }}>{i + 1}</span>
+                        <PokeAvatar name={p.name} cache={pokeCache} size={22} />
+                        <span style={{ color: TYPE_COLORS[p.type] || '#94a3b8', textTransform: 'capitalize' }}>{p.name}</span>
+                      </div>
+                      <span style={{ color: '#64748b', fontSize: 10 }}>{formatNumber(p.val)}</span>
+                    </div>
+                    <div style={{ height: 3, background: '#0f172a', borderRadius: 2 }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(p.val / maxVal) * 100}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.05 }}
+                        style={{ height: '100%', background: TYPE_COLORS[p.type] || '#94a3b8', borderRadius: 2 }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80%', color: '#475569', fontSize: 12 }}>No data</div>
+            );
+          })()}
         </section>
 
       </main>
