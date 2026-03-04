@@ -416,7 +416,9 @@ export default function App() {
           {versusMode && (
             <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, background: 'rgba(0,0,0,0.75)', padding: '7px 12px', borderRadius: 8, fontSize: 11, color: '#94a3b8' }}>
               <Swords size={11} style={{ marginRight: 5, verticalAlign: 'middle', color: '#dc2626' }} />
-              {versusCountries.length === 0 ? 'Click 2 countries' : versusCountries.join(' vs ')}
+              {versusPokemon[0] && versusPokemon[1]
+                ? <span><span style={{ color: '#ef4444' }}>{versusPokemon[0]}</span> vs <span style={{ color: '#3b82f6' }}>{versusPokemon[1]}</span></span>
+                : 'Choose 2 Pokémon below'}
             </div>
           )}
           <ComposableMap projectionConfig={{ scale: 145 }} style={{ width: '100%', height: '100%' }}>
@@ -443,7 +445,7 @@ export default function App() {
                       geography={geo}
                       fill={fillColor}
                       stroke="#0f172a" strokeWidth={0.5}
-                      onClick={() => d && handleCountryClick(name)}
+                      onClick={() => d && !versusMode && handleCountryClick(name)}
                       onMouseEnter={(evt) => d && setHovered({ name, x: evt.clientX, y: evt.clientY })}
                       onMouseMove={(evt) => hovered && setHovered(h => ({ ...h, x: evt.clientX, y: evt.clientY }))}
                       onMouseLeave={() => setHovered(null)}
@@ -680,26 +682,102 @@ export default function App() {
                 );
               })}
 
-              {/* Winner banner */}
-              {versusPokemon[0] && versusPokemon[1] && versusPokemon[0] !== versusPokemon[1] && (() => {
-                const scoreA = Object.values(mapData).reduce((s, d) => s + (d.top.find(t => t.name === versusPokemon[0])?.val || 0), 0);
-                const scoreB = Object.values(mapData).reduce((s, d) => s + (d.top.find(t => t.name === versusPokemon[1])?.val || 0), 0);
-                const winner = scoreA > scoreB ? versusPokemon[0] : versusPokemon[1];
-                const winColor = scoreA > scoreB ? '#ef4444' : '#3b82f6';
-                return (
-                  <div style={{ flex: 1, background: `${winColor}11`, border: `1px solid ${winColor}44`, borderRadius: 12, padding: '10px 14px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>🏆 Winner</div>
-                    <PokeAvatar name={winner} cache={pokeCache} size={44} />
-                    <div style={{ fontWeight: 900, fontSize: 14, color: winColor, marginTop: 6, textTransform: 'capitalize' }}>{winner}</div>
-                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                      {formatNumber(Math.abs(scoreA - scoreB))} score ahead
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* WINNER MODAL — центр экрана */}
+      <AnimatePresence>
+        {versusMode && versusPokemon[0] && versusPokemon[1] && versusPokemon[0] !== versusPokemon[1] && (() => {
+          const scoreA = Object.values(mapData).reduce((s, d) => s + (d.top.find(t => t.name === versusPokemon[0])?.val || 0), 0);
+          const scoreB = Object.values(mapData).reduce((s, d) => s + (d.top.find(t => t.name === versusPokemon[1])?.val || 0), 0);
+          const winner = scoreA > scoreB ? versusPokemon[0] : versusPokemon[1];
+          const loser  = scoreA > scoreB ? versusPokemon[1] : versusPokemon[0];
+          const winColor = scoreA > scoreB ? '#ef4444' : '#3b82f6';
+          const loseColor = scoreA > scoreB ? '#3b82f6' : '#ef4444';
+          const winScore = Math.max(scoreA, scoreB);
+          const loseScore = Math.min(scoreA, scoreB);
+          const winCountries = Object.values(mapData).filter(d => d.dominant === winner).length;
+          const loseCountries = Object.values(mapData).filter(d => d.dominant === loser).length;
+          const pct = Math.round((winScore / (winScore + loseScore)) * 100);
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              style={{
+                position: 'fixed', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 200, pointerEvents: 'none',
+                width: 320,
+              }}
+            >
+              {/* Glow backdrop */}
+              <div style={{
+                background: `radial-gradient(ellipse at center, ${winColor}22 0%, transparent 70%)`,
+                position: 'absolute', inset: -40, borderRadius: '50%',
+                filter: 'blur(20px)',
+              }} />
+
+              <div style={{
+                position: 'relative',
+                background: 'rgba(15,23,42,0.95)',
+                border: `2px solid ${winColor}`,
+                borderRadius: 20,
+                padding: '24px 28px',
+                textAlign: 'center',
+                boxShadow: `0 0 40px ${winColor}44, 0 20px 60px rgba(0,0,0,0.8)`,
+              }}>
+                {/* Trophy */}
+                <div style={{ fontSize: 32, marginBottom: 4 }}>🏆</div>
+                <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>Global Winner</div>
+
+                {/* Winner sprite + name */}
+                <motion.div
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}
+                >
+                  <PokeAvatar name={winner} cache={pokeCache} size={72} />
+                </motion.div>
+                <div style={{ fontWeight: 900, fontSize: 22, color: winColor, textTransform: 'capitalize', letterSpacing: '0.04em' }}>
+                  {winner}
+                </div>
+
+                {/* Score bar */}
+                <div style={{ margin: '14px 0 10px', height: 6, background: '#1e293b', borderRadius: 3, overflow: 'hidden' }}>
+                  <motion.div
+                    initial={{ width: '50%' }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    style={{ height: '100%', background: `linear-gradient(90deg, ${winColor}, ${winColor}aa)`, borderRadius: 3 }}
+                  />
+                </div>
+
+                {/* Stats row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ color: winColor, fontWeight: 700 }}>{formatNumber(winScore)}</div>
+                    <div style={{ color: '#475569', fontSize: 9 }}>{winCountries} countries</div>
+                  </div>
+                  <div style={{ color: '#334155', fontSize: 12, alignSelf: 'center' }}>vs</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ color: loseColor, fontWeight: 700 }}>{formatNumber(loseScore)}</div>
+                    <div style={{ color: '#475569', fontSize: 9 }}>{loseCountries} countries</div>
+                  </div>
+                </div>
+
+                {/* Loser name */}
+                <div style={{ marginTop: 8, fontSize: 10, color: '#334155', textTransform: 'capitalize' }}>
+                  vs {loser}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
     </div>
