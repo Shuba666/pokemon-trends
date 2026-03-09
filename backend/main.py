@@ -57,7 +57,6 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     logger.info("⏰ Планировщик запущен — сбор каждый день в 03:00 UTC")
 
-    # Если БД пустая — сразу собираем данные
     conn = app.state.pool.getconn()
     try:
         with conn.cursor() as cur:
